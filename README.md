@@ -1,3 +1,4 @@
-# CGS Repository Template
+# basket
+basket = BASic c(K)Ensus Tables. 
 
-Template repository for all CGS GitHub repositories
+A way to easily grab some pre-formatted tables from the American Community Survey. Examples with the Decennial Census and CPS forthcoming.
