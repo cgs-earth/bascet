@@ -104,9 +104,10 @@ def dwnld_acs5(
     -------
     tab : gpd.GeoDataFrame (with_geometry always set to TRUE)
     """
-    print(geo)
 
     if api_key is None:
+        api_key = get_api_key()
+    if api_key is None:  # still
         raise KeyError(
             "Please run the save_api_key() function with your Census API Key \
                 to create an environmental variable."
@@ -479,8 +480,8 @@ def make_age_sex_tables(
             "TRACT",
             "NAME",
             "sex_female_percent",
-            "age_under_5_years_percent",
-            "age_under_18_years_percent",
+            "age_under_5_percent",
+            "age_under_18_percent",
             "age_over_64_percent",
             "geometry",
     """
@@ -524,13 +525,13 @@ def make_age_sex_tables(
         3,
     )
 
-    ast["age_under_5_years_percent"] = round(
+    ast["age_under_5_percent"] = round(
         (ast["AGE_UNDER_FIVE_FEMALE"] + ast["AGE_UNDER_FIVE_MALE"])
         / ast["SEX_AGE_TOT_POP"],
         3,
     )
 
-    ast["age_under_18_years_percent"] = round(
+    ast["age_under_18_percent"] = round(
         (
             ast["AGE_UNDER_FIVE_FEMALE"]
             + ast["AGE_UNDER_FIVE_MALE"]
@@ -573,15 +574,15 @@ def make_age_sex_tables(
             "TRACT",
             "NAME",
             "sex_female_percent",
-            "age_under_5_years_percent",
-            "age_under_18_years_percent",
+            "age_under_5_percent",
+            "age_under_18_percent",
             "age_over_64_percent",
             "geometry",
         ]
     ]
 
 
-def make_tenure_by_units_tables(
+def make_units_in_struct_tables(
     dataset: str = ACS5,
     state: list[str] | str = ALL_STATES_AND_DC,
     county: list[str] | str = "*",
@@ -862,8 +863,7 @@ def make_year_built_tables(
         3,
     )
     ybt["year_struct_built_2010_2019_percent"] = round(
-        ybt["year_struct_built_2010_2019_later"]
-        / ybt["year_struct_built_total_struct"],
+        ybt["year_struct_built_2010_2019"] / ybt["year_struct_built_total_struct"],
         3,
     )
     ybt["year_struct_built_2000_2009_percent"] = round(
@@ -1013,7 +1013,7 @@ def make_civ_emp_tables(
         3,
     )
     cet["employment_civilian_labor_force_unemployed_percent"] = round(
-        cet["EMPLOYMENT_CIVILIAN_LABOR_FORCE_UNEMPLOYED",]
+        cet["EMPLOYMENT_CIVILIAN_LABOR_FORCE_UNEMPLOYED"]
         / cet["EMPLOYMENT_CIVILIAN_LABOR_FORCE"],
         3,
     )
@@ -1121,7 +1121,7 @@ def make_tenure_tables(
         ten["tenure_owner_occupied"] / ten["tenure_total_hh"], 3
     )
     ten["tenure_renter_occupied_percent"] = round(
-        ten["tenure_tenter_occupied"] / ten["tenure_total_hh"], 3
+        ten["tenure_renter_occupied"] / ten["tenure_total_hh"], 3
     )
 
     return ten[
