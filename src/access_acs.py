@@ -1,50 +1,117 @@
 import censusdis.data as ced
-import censusdis.maps as cem  # noqa
 from censusdis.datasets import ACS5
-from censusdis.states import ALL_STATES_AND_DC  # noqa
+from censusdis.states import ALL_STATES_AND_DC
 import pandas as pd
 import geopandas as gpd
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
-c = os.getenv("CENSUS_API_KEY")
-
-
-def labels4acs(var: str, year: int) -> str:
-    vars = ced.variables.search(
-        ACS5, year, group_name=var.split("_")[0], name=var
-    )
-    label = vars.iloc[0]["LABEL"]
-    label = label.split("!")
-    for i in ["", "Estimate", "Total:", "Total"]:
-        while i in label:
-            label.remove(i)
-    labstr = "_".join(label).replace(" ", "_")
-    if len(labstr) == 0:
-        labstr = var.split("_")[0] + "_Total_Universe"
-
-    return labstr
+from dotenv import load_dotenv, set_key
+from pathlib import Path
+import numpy as np
 
 
-def cid2desc(tab: pd.DataFrame | gpd.GeoDataFrame) -> dict[str, str]:
-    renamers = {}
-    for col in tab.columns:
-        if "_" in col:
-            renamers[col] = labels4acs(col, 2024)
-    return renamers
+def save_api_key(key_str: str) -> Path:
+    """
+    Create a saved environment variable for a Census API Key by creating or updating
+    a .env file in the same folder as this file.
+
+    To do manually- see .env.example: replace the string and resave as .env
+
+    If you don't have an API Key, request one here:
+        https://api.census.gov/data/key_signup.html
+
+    Parameters
+    ----------
+    key_str : str
+        Census API Key
+
+    Returns
+    -------
+    env_loc : Path
+        File path location of .env file.
+
+    """
+    env_loc = Path("./.env")
+    set_key(env_loc, key_to_set="CENSUS_API_KEY", value_to_set=key_str)
+    return env_loc
+
+
+def get_api_key() -> str | None:
+    """
+    Return the Census API Key stored in a .env file in the same folder as this file.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+        : str | None - API Key
+    """
+    load_dotenv()
+    return os.getenv("CENSUS_API_KEY")
 
 
 def dwnld_acs5(
     cols: list[str],
-    geo="tract",
-    dataset=ACS5,
-    state=ALL_STATES_AND_DC,
-    county="*",
-    vintage=2024,
-    api_key=c,
-):
+    geo: str = "tract",
+    dataset: str = ACS5,
+    state: list[str] | str = ALL_STATES_AND_DC,
+    county: list[str] | str = "*",
+    vintage: int = 2024,
+    api_key: str | None = get_api_key(),
+) -> gpd.GeoDataFrame | pd.DataFrame:
+    """
+    Download data from the American Community Survey 5-Year Estimates
+        with pre-set restrictions.
+
+    Note - this function will also work for other surveys
+        (namely the Decennial Census files)
+        but the default variables are for the 2024 ACS 5YR EST tables.
+
+    Defaults:
+        - Dataset: ACS 5YR Estimates
+        - Vintage: 2024
+        - Geography:
+            - state: ALL STATES + DC
+            - county: All counties in the selected states
+            - geo: tract - the smallest unit of geo you can select for this function.
+                Alternatively can be Place, County, or State.
+        - API Key read from .env file (you can also provide as a string)
+
+    Parameters
+    ----------
+    cols: list[str]
+        List of ACS columns to grab.
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
+    dataset: str
+        String representing the dataset you are downloading.
+        Defaults to "acs/acs5" - from censusdis = ACS_5
+    state: list[str] | str
+        List of two letter state FIPS codes that you want to download data for.
+        Defaults to censusdis constant ALL_STATES_AND_DC.
+    county: list[str] | str
+        List of county FIPS codes that you want to download data for. Must match
+        the states in the state list specified above.
+        Defaults to "*" (all)
+    vintage: int
+        Year of dataset. Defaults to 2024.
+    api_key: str
+        Census API Key. Defaults to pulling from the environment variable.
+
+    Returns
+    -------
+    tab : gpd.GeoDataFrame (with_geometry always set to TRUE)
+    """
     print(geo)
+
+    if api_key is None:
+        raise KeyError(
+            "Please run the save_api_key() function with your Census API Key \
+                to create an environmental variable."
+        )
+
     if geo == "tract":  # default
         tab = ced.download(
             dataset,
@@ -91,27 +158,90 @@ def dwnld_acs5(
         tab["GEOID"] = tab["STATE"]
     else:
         raise KeyError("Not one of the geography options.")
+    for cid in ["COUNTY", "PLACE", "TRACT"]:
+        if cid not in tab.columns:
+            tab[cid] = np.nan
     return tab
 
 
 def make_race_tables(
-    dataset=ACS5,
-    state=ALL_STATES_AND_DC,
-    county="*",
-    geo="tract",
-    vintage=2024,
-    api_key=c,
-):
+    dataset: str = ACS5,
+    state: list[str] | str = ALL_STATES_AND_DC,
+    county: list[str] | str = "*",
+    geo: str = "tract",
+    vintage: int = 2024,
+    api_key: str | None = get_api_key(),
+) -> gpd.GeoDataFrame | pd.DataFrame:
+    """
+    Create a predefined table for percentage of population
+        by race & hispanic/latino.
+
+    This function calls the dwnld_acs5 function so all that
+    applies to that function also applies to this one (including defaults).
+
+    Defaults:
+        - Dataset: ACS 5YR Estimates
+        - Vintage: 2024
+        - Geography:
+            - state: ALL STATES + DC
+            - county: All counties in the selected states
+            - geo: tract - the smallest unit of geo you can select for this function.
+                Alternatively can be Place, County, or State.
+        - API Key read from .env file (you can also provide as a string)
+
+    Parameters
+    ----------
+    cols: list[str]
+        List of ACS columns to grab.
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
+    dataset: str
+        String representing the dataset you are downloading.
+        Defaults to "acs/acs5" - from censusdis = ACS_5
+    state: list[str] | str
+        List of two letter state FIPS codes that you want to download data for.
+        Defaults to censusdis constant ALL_STATES_AND_DC.
+    county: list[str] | str
+        List of county FIPS codes that you want to download data for. Must match
+        the states in the state list specified above.
+        Defaults to "*" (all)
+    vintage: int
+        Year of dataset. Defaults to 2024.
+    api_key: str
+        Census API Key. Defaults to pulling from the environment variable.
+
+    Returns
+    -------
+    tab : gpd.GeoDataFrame (with_geometry always set to TRUE)
+        Columns -
+            "GEOID",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
+            "race_not_hispanic_white_alone_percent",
+            "race_not_hispanic_black_alone_percent",
+            "race_not_hispanic_aian_alone_percent",
+            "race_not_hispanic_asian_alone_percent",
+            "race_not_hispanic_nhpi_alone_percent",
+            "race_not_hispanic_otherrace_alone_percent",
+            "race_not_hispanic_percent",
+            "race_hispanic_percent",
+            "race_personofcolor_percent",
+            "geometry",
+    """
     bcn = {
-        "B03002_001E": "RACE_TOTAL_POPULATION",
-        "B03002_003E": "RACE_NOT_HISPANIC_WHITE_ALONE_POPULATION",
-        "B03002_004E": "RACE_NOT_HISPANIC_BLACK_ALONE_POPULATION",
-        "B03002_005E": "RACE_NOT_HISPANIC_AIAN_ALONE_POPULATION",
-        "B03002_006E": "RACE_NOT_HISPANIC_ASIAN_ALONE_POPULATION",
-        "B03002_007E": "RACE_NOT_HISPANIC_NHPI_ALONE_POPULATION",
-        "B03002_008E": "RACE_NOT_HISPANIC_OTHERRACE_ALONE_POPULATION",
-        "B03002_012E": "RACE_HISPANIC_TOTAL_POPULATION",
-        "B03002_002E": "RACE_NOT_HISPANIC_TOTAL_POPULATION",
+        "B03002_001E": "RACE_TOT_POP",
+        "B03002_003E": "RACE_NOT_HISPANIC_WHITE_ALONE_POP",
+        "B03002_004E": "RACE_NOT_HISPANIC_BLACK_ALONE_POP",
+        "B03002_005E": "RACE_NOT_HISPANIC_AIAN_ALONE_POP",
+        "B03002_006E": "RACE_NOT_HISPANIC_ASIAN_ALONE_POP",
+        "B03002_007E": "RACE_NOT_HISPANIC_NHPI_ALONE_POP",
+        "B03002_008E": "RACE_NOT_HISPANIC_OTHERRACE_ALONE_POP",
+        "B03002_012E": "RACE_HISPANIC_TOT_POP",
+        "B03002_002E": "RACE_NOT_HISPANIC_TOT_POP",
     }
     cols = ["NAME"] + list(bcn.keys())
 
@@ -126,41 +256,35 @@ def make_race_tables(
     ).rename(columns=bcn)
 
     rt["race_not_hispanic_white_alone_percent"] = round(
-        rt["RACE_NOT_HISPANIC_WHITE_ALONE_POPULATION"]
-        / rt["RACE_TOTAL_POPULATION"],
+        rt["RACE_NOT_HISPANIC_WHITE_ALONE_POP"] / rt["RACE_TOT_POP"],
         3,
     )
     rt["race_not_hispanic_black_alone_percent"] = round(
-        rt["RACE_NOT_HISPANIC_BLACK_ALONE_POPULATION"]
-        / rt["RACE_TOTAL_POPULATION"],
+        rt["RACE_NOT_HISPANIC_BLACK_ALONE_POP"] / rt["RACE_TOT_POP"],
         3,
     )
     rt["race_not_hispanic_aian_alone_percent"] = round(
-        rt["RACE_NOT_HISPANIC_AIAN_ALONE_POPULATION"]
-        / rt["RACE_TOTAL_POPULATION"],
+        rt["RACE_NOT_HISPANIC_AIAN_ALONE_POP"] / rt["RACE_TOT_POP"],
         3,
     )
     rt["race_not_hispanic_asian_alone_percent"] = round(
-        rt["RACE_NOT_HISPANIC_ASIAN_ALONE_POPULATION"]
-        / rt["RACE_TOTAL_POPULATION"],
+        rt["RACE_NOT_HISPANIC_ASIAN_ALONE_POP"] / rt["RACE_TOT_POP"],
         3,
     )
     rt["race_not_hispanic_nhpi_alone_percent"] = round(
-        rt["RACE_NOT_HISPANIC_NHPI_ALONE_POPULATION"]
-        / rt["RACE_TOTAL_POPULATION"],
+        rt["RACE_NOT_HISPANIC_NHPI_ALONE_POP"] / rt["RACE_TOT_POP"],
         3,
     )
     rt["race_not_hispanic_otherrace_alone_percent"] = round(
-        rt["RACE_NOT_HISPANIC_OTHERRACE_ALONE_POPULATION"]
-        / rt["RACE_TOTAL_POPULATION"],
+        rt["RACE_NOT_HISPANIC_OTHERRACE_ALONE_POP"] / rt["RACE_TOT_POP"],
         3,
     )
     rt["race_not_hispanic_percent"] = round(
-        rt["RACE_NOT_HISPANIC_TOTAL_POPULATION"] / rt["RACE_TOTAL_POPULATION"],
+        rt["RACE_NOT_HISPANIC_TOT_POP"] / rt["RACE_TOT_POP"],
         3,
     )
     rt["race_hispanic_percent"] = round(
-        rt["RACE_HISPANIC_TOTAL_POPULATION"] / rt["RACE_TOTAL_POPULATION"],
+        rt["RACE_HISPANIC_TOT_POP"] / rt["RACE_TOT_POP"],
         3,
     )
     rt["race_personofcolor_percent"] = round(
@@ -170,6 +294,11 @@ def make_race_tables(
     return rt[
         [
             "GEOID",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
             "race_not_hispanic_white_alone_percent",
             "race_not_hispanic_black_alone_percent",
             "race_not_hispanic_aian_alone_percent",
@@ -179,23 +308,78 @@ def make_race_tables(
             "race_not_hispanic_percent",
             "race_hispanic_percent",
             "race_personofcolor_percent",
+            "geometry",
         ]
     ]
 
 
 def make_pov_limit_tables(
-    dataset=ACS5,
-    state=ALL_STATES_AND_DC,
-    county="*",
-    geo="tract",
-    vintage=2024,
-    api_key=c,
-):
+    dataset: str = ACS5,
+    state: list[str] | str = ALL_STATES_AND_DC,
+    county: list[str] | str = "*",
+    geo: str = "tract",
+    vintage: int = 2024,
+    api_key: str | None = get_api_key(),
+) -> gpd.GeoDataFrame | pd.DataFrame:
+    """
+    Create a predefined table for percentage of population
+        by relationship to the federal poverty threshold.
+
+    This function calls the dwnld_acs5 function so all that
+    applies to that function also applies to this one (including defaults).
+
+    Defaults:
+        - Dataset: ACS 5YR Estimates
+        - Vintage: 2024
+        - Geography:
+            - state: ALL STATES + DC
+            - county: All counties in the selected states
+            - geo: tract - the smallest unit of geo you can select for this function.
+                Alternatively can be Place, County, or State.
+        - API Key read from .env file (you can also provide as a string)
+
+    Parameters
+    ----------
+    cols: list[str]
+        List of ACS columns to grab.
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
+    dataset: str
+        String representing the dataset you are downloading.
+        Defaults to "acs/acs5" - from censusdis = ACS_5
+    state: list[str] | str
+        List of two letter state FIPS codes that you want to download data for.
+        Defaults to censusdis constant ALL_STATES_AND_DC.
+    county: list[str] | str
+        List of county FIPS codes that you want to download data for. Must match
+        the states in the state list specified above.
+        Defaults to "*" (all)
+    vintage: int
+        Year of dataset. Defaults to 2024.
+    api_key: str
+        Census API Key. Defaults to pulling from the environment variable.
+
+    Returns
+    -------
+    tab : gpd.GeoDataFrame (with_geometry always set to TRUE)
+        Columns -
+            "GEOID",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
+            "federal_poverty_limit_below_percent",
+            "federal_poverty_limit_between_100_149_percent",
+            "federal_poverty_limit_above_150_percent",
+            "geometry",
+    """
     bcn = {
-        "B06012_001E": "TOTAL_POPULATION_POVERTY",
-        "B06012_002E": "POPULATION_BELOW_POVERTY_LIMIT",
-        "B06012_003E": "POPULATION_BETWEEN_100-149_POVERTY_LIMIT",
-        "B06012_004E": "POPULATION_ABOVE_150_POVERTY_LIMIT",
+        "B06012_001E": "TOT_POP_POVERTY",
+        "B06012_002E": "POP_BELOW_POVERTY_LIMIT",
+        "B06012_003E": "POP_BETWEEN_100-149_POVERTY_LIMIT",
+        "B06012_004E": "POP_ABOVE_150_POVERTY_LIMIT",
     }
     cols = ["NAME"] + list(bcn.keys())
     plt = dwnld_acs5(
@@ -209,41 +393,100 @@ def make_pov_limit_tables(
     ).rename(columns=bcn)
 
     plt["federal_poverty_limit_below_percent"] = round(
-        plt["POPULATION_BELOW_POVERTY_LIMIT"]
-        / plt["TOTAL_POPULATION_POVERTY"],
+        plt["POP_BELOW_POVERTY_LIMIT"] / plt["TOT_POP_POVERTY"],
         3,
     )
     plt["federal_poverty_limit_between_100_149_percent"] = round(
-        plt["POPULATION_BETWEEN_100-149_POVERTY_LIMIT"]
-        / plt["TOTAL_POPULATION_POVERTY"],
+        plt["POP_BETWEEN_100-149_POVERTY_LIMIT"] / plt["TOT_POP_POVERTY"],
         3,
     )
     plt["federal_poverty_limit_above_150_percent"] = round(
-        plt["POPULATION_ABOVE_150_POVERTY_LIMIT"]
-        / plt["TOTAL_POPULATION_POVERTY"],
+        plt["POP_ABOVE_150_POVERTY_LIMIT"] / plt["TOT_POP_POVERTY"],
         3,
     )
     return plt[
         [
             "GEOID",
-            "federal_poverty_limit_below_allraces_percent",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
+            "federal_poverty_limit_below_percent",
             "federal_poverty_limit_between_100_149_percent",
             "federal_poverty_limit_above_150_percent",
+            "geometry",
         ]
     ]
 
 
 def make_age_sex_tables(
-    dataset=ACS5,
-    state=ALL_STATES_AND_DC,
-    county="*",
-    geo="tract",
-    vintage=2024,
-    api_key=c,
-):
+    dataset: str = ACS5,
+    state: list[str] | str = ALL_STATES_AND_DC,
+    county: list[str] | str = "*",
+    geo: str = "tract",
+    vintage: int = 2024,
+    api_key: str | None = get_api_key(),
+) -> gpd.GeoDataFrame | pd.DataFrame:
+    """
+    Create a predefined table for percentage of population
+        by sex (female) and by three age groups relevant for policy
+        (under 5, under 18, and 65+)
+
+    This function calls the dwnld_acs5 function so all that
+    applies to that function also applies to this one (including defaults).
+
+    Defaults:
+        - Dataset: ACS 5YR Estimates
+        - Vintage: 2024
+        - Geography:
+            - state: ALL STATES + DC
+            - county: All counties in the selected states
+            - geo: tract - the smallest unit of geo you can select for this function.
+                Alternatively can be Place, County, or State.
+        - API Key read from .env file (you can also provide as a string)
+
+    Parameters
+    ----------
+    cols: list[str]
+        List of ACS columns to grab.
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
+    dataset: str
+        String representing the dataset you are downloading.
+        Defaults to "acs/acs5" - from censusdis = ACS_5
+    state: list[str] | str
+        List of two letter state FIPS codes that you want to download data for.
+        Defaults to censusdis constant ALL_STATES_AND_DC.
+    county: list[str] | str
+        List of county FIPS codes that you want to download data for. Must match
+        the states in the state list specified above.
+        Defaults to "*" (all)
+    vintage: int
+        Year of dataset. Defaults to 2024.
+    api_key: str
+        Census API Key. Defaults to pulling from the environment variable.
+
+    Returns
+    -------
+    tab : gpd.GeoDataFrame (with_geometry always set to TRUE)
+        Columns -
+            "GEOID",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
+            "sex_female_percent",
+            "age_under_5_years_percent",
+            "age_under_18_years_percent",
+            "age_over_64_percent",
+            "geometry",
+    """
     bcn = {
-        "B01001_026E": "SEX_FEMALE_POPULATION",
-        "B01001_001E": "SEX_AGE_TOTAL_POPULATION",
+        "B01001_026E": "SEX_FEMALE_POP",
+        "B01001_001E": "SEX_AGE_TOT_POP",
         "B01001_003E": "AGE_UNDER_FIVE_MALE",
         "B01001_027E": "AGE_UNDER_FIVE_FEMALE",
         "B01001_004E": "AGE_5_9_MALE",
@@ -277,13 +520,13 @@ def make_age_sex_tables(
     ).rename(columns=bcn)
 
     ast["sex_female_percent"] = round(
-        ast["SEX_FEMALE_POPULATION"] / ast["SEX_AGE_TOTAL_POPULATION"],
+        ast["SEX_FEMALE_POP"] / ast["SEX_AGE_TOT_POP"],
         3,
     )
 
     ast["age_under_5_years_percent"] = round(
         (ast["AGE_UNDER_FIVE_FEMALE"] + ast["AGE_UNDER_FIVE_MALE"])
-        / ast["SEX_AGE_TOTAL_POPULATION"],
+        / ast["SEX_AGE_TOT_POP"],
         3,
     )
 
@@ -298,7 +541,7 @@ def make_age_sex_tables(
             + ast["AGE_15_17_FEMALE"]
             + ast["AGE_15_17_MALE"]
         )
-        / ast["SEX_AGE_TOTAL_POPULATION"],
+        / ast["SEX_AGE_TOT_POP"],
         3,
     )
 
@@ -317,29 +560,97 @@ def make_age_sex_tables(
             + ast["AGE_85p_FEMALE"]
             + ast["AGE_85p_MALE"]
         )
-        / ast["SEX_AGE_TOTAL_POPULATION"],
+        / ast["SEX_AGE_TOT_POP"],
         3,
     )
 
     return ast[
         [
             "GEOID",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
             "sex_female_percent",
             "age_under_5_years_percent",
             "age_under_18_years_percent",
             "age_over_64_percent",
+            "geometry",
         ]
     ]
 
 
 def make_tenure_by_units_tables(
-    dataset=ACS5,
-    state=ALL_STATES_AND_DC,
-    county="*",
-    geo="tract",
-    vintage=2024,
-    api_key=c,
-):
+    dataset: str = ACS5,
+    state: list[str] | str = ALL_STATES_AND_DC,
+    county: list[str] | str = "*",
+    geo: str = "tract",
+    vintage: int = 2024,
+    api_key: str | None = get_api_key(),
+) -> gpd.GeoDataFrame | pd.DataFrame:
+    """
+    Create a predefined table for percentage of occupied housing units
+    by number of units.
+
+    This function calls the dwnld_acs5 function so all that
+    applies to that function also applies to this one (including defaults).
+
+    Defaults:
+        - Dataset: ACS 5YR Estimates
+        - Vintage: 2024
+        - Geography:
+            - state: ALL STATES + DC
+            - county: All counties in the selected states
+            - geo: tract - the smallest unit of geo you can select for this function.
+                Alternatively can be Place, County, or State.
+        - API Key read from .env file (you can also provide as a string)
+
+    Parameters
+    ----------
+    cols: list[str]
+        List of ACS columns to grab.
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
+    dataset: str
+        String representing the dataset you are downloading.
+        Defaults to "acs/acs5" - from censusdis = ACS_5
+    state: list[str] | str
+        List of two letter state FIPS codes that you want to download data for.
+        Defaults to censusdis constant ALL_STATES_AND_DC.
+    county: list[str] | str
+        List of county FIPS codes that you want to download data for. Must match
+        the states in the state list specified above.
+        Defaults to "*" (all)
+    vintage: int
+        Year of dataset. Defaults to 2024.
+    api_key: str
+        Census API Key. Defaults to pulling from the environment variable.
+
+    Returns
+    -------
+    tab : gpd.GeoDataFrame (with_geometry always set to TRUE)
+        Columns -
+            "GEOID",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
+            "units_in_struct_occupied_housing_units",
+            "units_in_struct_occupied_housing_units_1_detached",
+            "units_in_struct_occupied_housing_units_1_attached",
+            "units_in_struct_occupied_housing_units_2"
+            "units_in_struct_occupied_housing_units_3_4",
+            "units_in_struct_occupied_housing_units_5_9",
+            "units_in_struct_occupied_housing_units_10_19",
+            "units_in_struct_occupied_housing_units_20_49",
+            "units_in_struct_occupied_housing_units_50_more",
+            "units_in_struct_occupied_housing_units_mobile_home",
+            "units_in_struct_occupied_housing_units_boat_rv_van_etc",
+            "geometry",
+    """
     bcn = {
         "B25032_002E": "TENURE_BY_U_IN_STRUCT_OO_HUS",
         "B25032_013E": "TENURE_BY_U_IN_STRUCT_RO_HUS",
@@ -375,104 +686,167 @@ def make_tenure_by_units_tables(
         api_key=api_key,
     ).rename(columns=bcn)
 
-    tut["tenure_by_units_in_struct_occupied_housing_units"] = round(
+    tut["units_in_struct_occupied_housing_units"] = round(
         tut["TENURE_BY_U_IN_STRUCT_OO_HUS"]
         + tut["TENURE_BY_U_IN_STRUCT_RO_HUS"],
         3,
     )
 
-    tut["tenure_by_units_in_struct_occupied_housing_units_1_detached"] = round(
+    tut["units_in_struct_occupied_housing_units_1_detached"] = round(
         tut["TENURE_BY_U_IN_STRUCT_OO_HUS_1_DETACHED"]
         + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_1_DETACHED"],
         3,
     )
-    tut["tenure_by_units_in_struct_occupied_housing_units_1_attached"] = round(
+    tut["units_in_struct_occupied_housing_units_1_attached"] = round(
         tut["TENURE_BY_U_IN_STRUCT_OO_HUS_1_ATTACHED"]
         + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_1_ATTACHED"],
         3,
     )
-    tut["tenure_by_units_in_struct_occupied_housing_units_2"] = round(
+    tut["units_in_struct_occupied_housing_units_2"] = round(
         tut["TENURE_BY_U_IN_STRUCT_OO_HUS_2"]
         + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_2"],
         3,
     )
-    tut["tenure_by_units_in_struct_occupied_housing_units_3_4"] = round(
+    tut["units_in_struct_occupied_housing_units_3_4"] = round(
         tut["TENURE_BY_U_IN_STRUCT_OO_HUS_3_4"]
         + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_3_4"],
         3,
     )
-    tut["tenure_by_units_in_struct_occupied_housing_units_5_9"] = round(
+    tut["units_in_struct_occupied_housing_units_5_9"] = round(
         tut["TENURE_BY_U_IN_STRUCT_OO_HUS_5_9"]
         + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_5_9"],
         3,
     )
-    tut["tenure_by_units_in_struct_occupied_housing_units_10_19"] = round(
+    tut["units_in_struct_occupied_housing_units_10_19"] = round(
         tut["TENURE_BY_U_IN_STRUCT_OO_HUS_10_19"]
         + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_10_19"],
         3,
     )
-    tut["tenure_by_units_in_struct_occupied_housing_units_20_49"] = round(
+    tut["units_in_struct_occupied_housing_units_20_49"] = round(
         tut["TENURE_BY_U_IN_STRUCT_OO_HUS_20_49"]
         + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_20_49"],
         3,
     )
-    tut["tenure_by_units_in_struct_occupied_housing_units_50_more"] = round(
+    tut["units_in_struct_occupied_housing_units_50_more"] = round(
         tut["TENURE_BY_U_IN_STRUCT_OO_HUS_50_MORE"]
         + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_50_MORE"],
         3,
     )
-    tut["tenure_by_units_in_struct_occupied_housing_units_mobile_home"] = (
-        round(
-            tut["TENURE_BY_U_IN_STRUCT_OO_HUS_MOBILEHOME"]
-            + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_MOBILEHOME"],
-            3,
-        )
+    tut["units_in_struct_occupied_housing_units_mobile_home"] = round(
+        tut["TENURE_BY_U_IN_STRUCT_OO_HUS_MOBILEHOME"]
+        + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_MOBILEHOME"],
+        3,
     )
-    tut["tenure_by_units_in_struct_occupied_housing_units_boat_rv_van_etc"] = (
-        round(
-            tut["TENURE_BY_U_IN_STRUCT_OO_HUS_BOAT_RV_VAN_ETC"]
-            + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_BOAT_RV_VAN_ETC"],
-            3,
-        )
+    tut["units_in_struct_occupied_housing_units_boat_rv_van_etc"] = round(
+        tut["TENURE_BY_U_IN_STRUCT_OO_HUS_BOAT_RV_VAN_ETC"]
+        + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_BOAT_RV_VAN_ETC"],
+        3,
     )
     return tut[
         [
             "GEOID",
-            "tenure_by_units_in_struct_occupied_housing_units",
-            "tenure_by_units_in_struct_occupied_housing_units_1_detached",
-            "tenure_by_units_in_struct_occupied_housing_units_1_attached",
-            "tenure_by_units_in_struct_occupied_housing_units_2"
-            "tenure_by_units_in_struct_occupied_housing_units_3_4",
-            "tenure_by_units_in_struct_occupied_housing_units_5_9",
-            "tenure_by_units_in_struct_occupied_housing_units_10_19",
-            "tenure_by_units_in_struct_occupied_housing_units_20_49",
-            "tenure_by_units_in_struct_occupied_housing_units_50_more",
-            "tenure_by_units_in_struct_occupied_housing_units_mobile_home",
-            "tenure_by_units_in_struct_occupied_housing_units_boat_rv_van_etc",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
+            "units_in_struct_occupied_housing_units",
+            "units_in_struct_occupied_housing_units_1_detached",
+            "units_in_struct_occupied_housing_units_1_attached",
+            "units_in_struct_occupied_housing_units_2"
+            "units_in_struct_occupied_housing_units_3_4",
+            "units_in_struct_occupied_housing_units_5_9",
+            "units_in_struct_occupied_housing_units_10_19",
+            "units_in_struct_occupied_housing_units_20_49",
+            "units_in_struct_occupied_housing_units_50_more",
+            "units_in_struct_occupied_housing_units_mobile_home",
+            "units_in_struct_occupied_housing_units_boat_rv_van_etc",
+            "geometry",
         ]
     ]
 
 
 def make_year_built_tables(
-    dataset=ACS5,
-    state=ALL_STATES_AND_DC,
-    county="*",
-    geo="tract",
-    vintage=2024,
-    api_key=c,
-):
+    dataset: str = ACS5,
+    state: list[str] | str = ALL_STATES_AND_DC,
+    county: list[str] | str = "*",
+    geo: str = "tract",
+    vintage: int = 2024,
+    api_key: str | None = get_api_key(),
+) -> gpd.GeoDataFrame | pd.DataFrame:
+    """
+    Create a predefined table for percentage of buildings by year built.
+
+    This function calls the dwnld_acs5 function so all that
+    applies to that function also applies to this one (including defaults).
+
+    Defaults:
+        - Dataset: ACS 5YR Estimates
+        - Vintage: 2024
+        - Geography:
+            - state: ALL STATES + DC
+            - county: All counties in the selected states
+            - geo: tract - the smallest unit of geo you can select for this function.
+                Alternatively can be Place, County, or State.
+        - API Key read from .env file (you can also provide as a string)
+
+    Parameters
+    ----------
+    cols: list[str]
+        List of ACS columns to grab.
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
+    dataset: str
+        String representing the dataset you are downloading.
+        Defaults to "acs/acs5" - from censusdis = ACS_5
+    state: list[str] | str
+        List of two letter state FIPS codes that you want to download data for.
+        Defaults to censusdis constant ALL_STATES_AND_DC.
+    county: list[str] | str
+        List of county FIPS codes that you want to download data for. Must match
+        the states in the state list specified above.
+        Defaults to "*" (all)
+    vintage: int
+        Year of dataset. Defaults to 2024.
+    api_key: str
+        Census API Key. Defaults to pulling from the environment variable.
+
+    Returns
+    -------
+    tab : gpd.GeoDataFrame (with_geometry always set to TRUE)
+        Columns -
+            "GEOID",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
+            "year_struct_built_2020_later_percent",
+            "year_struct_built_2010_2019_percent",
+            "year_struct_built_2000_2009_percent",
+            "year_struct_built_1990_1999_percent",
+            "year_struct_built_1980_1989_percent"
+            "year_struct_built_1970_1979_percent"
+            "year_struct_built_1960_1969_percent",
+            "year_struct_built_1950_1959_percent",
+            "year_struct_built_1940_1949_percent",
+            "year_struct_built_pre_1940_percent",
+            "year_struct_built_total_struct",
+            "geometry",
+    """
     bcn = {
-        "B25034_001E": "year_structure_built_total_struct",
-        "B25034_002E": "year_structure_built_built_2020_later",
-        "B25034_003E": "year_structure_built_built_2010_2019",
-        "B25034_004E": "year_structure_built_built_2000_2009",
-        "B25034_005E": "year_structure_built_built_1990_1999",
-        "B25034_006E": "year_structure_built_built_1980_1989",
-        "B25034_007E": "year_structure_built_built_1970_1979",
-        "B25034_008E": "year_structure_built_built_1960_1969",
-        "B25034_009E": "year_structure_built_built_1950_1959",
-        "B25034_010E": "year_structure_built_built_1940_1949",
-        "B25034_011E": "year_structure_built_built_pre_1940",
+        "B25034_001E": "year_struct_built_total_struct",
+        "B25034_002E": "year_struct_built_2020_later",
+        "B25034_003E": "year_struct_built_2010_2019",
+        "B25034_004E": "year_struct_built_2000_2009",
+        "B25034_005E": "year_struct_built_1990_1999",
+        "B25034_006E": "year_struct_built_1980_1989",
+        "B25034_007E": "year_struct_built_1970_1979",
+        "B25034_008E": "year_struct_built_1960_1969",
+        "B25034_009E": "year_struct_built_1950_1959",
+        "B25034_010E": "year_struct_built_1940_1949",
+        "B25034_011E": "year_struct_built_pre_1940",
     }
     cols = ["NAME"] + list(bcn.keys())
     ybt = dwnld_acs5(
@@ -485,85 +859,152 @@ def make_year_built_tables(
         api_key=api_key,
     ).rename(columns=bcn)
 
-    ybt["year_structure_built_built_2020_later_percent"] = round(
-        ybt["year_structure_built_built_2020_later"]
-        / ybt["year_structure_built_total_struct"],
+    ybt["year_struct_built_2020_later_percent"] = round(
+        ybt["year_struct_built_2020_later"]
+        / ybt["year_struct_built_total_struct"],
         3,
     )
-    ybt["year_structure_built_built_2010_2019_percent"] = round(
-        ybt["year_structure_built_built_2010_2019_later"]
-        / ybt["year_structure_built_total_struct"],
+    ybt["year_struct_built_2010_2019_percent"] = round(
+        ybt["year_struct_built_2010_2019_later"]
+        / ybt["year_struct_built_total_struct"],
         3,
     )
-    ybt["year_structure_built_built_2000_2009_percent"] = round(
-        ybt["year_structure_built_built_2000_2009"]
-        / ybt["year_structure_built_total_struct"],
+    ybt["year_struct_built_2000_2009_percent"] = round(
+        ybt["year_struct_built_2000_2009"]
+        / ybt["year_struct_built_total_struct"],
         3,
     )
-    ybt["year_structure_built_built_1990_1999_percent"] = round(
-        ybt["year_structure_built_built_1990_1999"]
-        / ybt["year_structure_built_total_struct"],
+    ybt["year_struct_built_1990_1999_percent"] = round(
+        ybt["year_struct_built_1990_1999"]
+        / ybt["year_struct_built_total_struct"],
         3,
     )
-    ybt["year_structure_built_built_1980_1989_percent"] = round(
-        ybt["year_structure_built_built_1980_1989"]
-        / ybt["year_structure_built_total_struct"],
+    ybt["year_struct_built_1980_1989_percent"] = round(
+        ybt["year_struct_built_1980_1989"]
+        / ybt["year_struct_built_total_struct"],
         3,
     )
-    ybt["year_structure_built_built_1970_1979_percent"] = round(
-        ybt["year_structure_built_built_1970_1979"]
-        / ybt["year_structure_built_total_struct"],
+    ybt["year_struct_built_1970_1979_percent"] = round(
+        ybt["year_struct_built_1970_1979"]
+        / ybt["year_struct_built_total_struct"],
         3,
     )
-    ybt["year_structure_built_built_1960_1969_percent"] = round(
-        ybt["year_structure_built_built_1960_1969"]
-        / ybt["year_structure_built_total_struct"],
+    ybt["year_struct_built_1960_1969_percent"] = round(
+        ybt["year_struct_built_1960_1969"]
+        / ybt["year_struct_built_total_struct"],
         3,
     )
-    ybt["year_structure_built_built_1950_1959_percent"] = round(
-        ybt["year_structure_built_built_1950_1959"]
-        / ybt["year_structure_built_total_struct"],
+    ybt["year_struct_built_1950_1959_percent"] = round(
+        ybt["year_struct_built_1950_1959"]
+        / ybt["year_struct_built_total_struct"],
         3,
     )
-    ybt["year_structure_built_built_1940_1949_percent"] = round(
-        ybt["year_structure_built_built_1940_1949"]
-        / ybt["year_structure_built_total_struct"],
+    ybt["year_struct_built_1940_1949_percent"] = round(
+        ybt["year_struct_built_1940_1949"]
+        / ybt["year_struct_built_total_struct"],
         3,
     )
-    ybt["year_structure_built_built_pre_1940_percent"] = round(
-        ybt["year_structure_built_built_pre_1940"]
-        / ybt["year_structure_built_total_struct"],
+    ybt["year_struct_built_pre_1940_percent"] = round(
+        ybt["year_struct_built_pre_1940"]
+        / ybt["year_struct_built_total_struct"],
         3,
     )
 
     return ybt[
         [
             "GEOID",
-            "year_structure_built_built_2020_later_percent",
-            "year_structure_built_built_2010_2019_percent",
-            "year_structure_built_built_2000_2009_percent",
-            "year_structure_built_built_1990_1999_percent",
-            "year_structure_built_built_1980_1989_percent"
-            "year_structure_built_built_1970_1979_percent"
-            "year_structure_built_built_1960_1969_percent",
-            "year_structure_built_built_1950_1959_percent",
-            "year_structure_built_built_1940_1949_percent",
-            "year_structure_built_built_pre_1940_percent",
-            "year_structure_built_total_struct",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
+            "year_struct_built_2020_later_percent",
+            "year_struct_built_2010_2019_percent",
+            "year_struct_built_2000_2009_percent",
+            "year_struct_built_1990_1999_percent",
+            "year_struct_built_1980_1989_percent"
+            "year_struct_built_1970_1979_percent"
+            "year_struct_built_1960_1969_percent",
+            "year_struct_built_1950_1959_percent",
+            "year_struct_built_1940_1949_percent",
+            "year_struct_built_pre_1940_percent",
+            "year_struct_built_total_struct",
+            "geometry",
         ]
     ]
 
 
 def make_civ_emp_tables(
-    dataset=ACS5,
-    state=ALL_STATES_AND_DC,
-    county="*",
-    geo="tract",
-    vintage=2024,
-    api_key=c,
-):
+    dataset: str = ACS5,
+    state: list[str] | str = ALL_STATES_AND_DC,
+    county: list[str] | str = "*",
+    geo: str = "tract",
+    vintage: int = 2024,
+    api_key: str | None = get_api_key(),
+) -> gpd.GeoDataFrame | pd.DataFrame:
+    """
+    Create a predefined table for percentage of buildings by year built.
+
+    This function calls the dwnld_acs5 function so all that
+    applies to that function also applies to this one (including defaults).
+
+    Defaults:
+        - Dataset: ACS 5YR Estimates
+        - Vintage: 2024
+        - Geography:
+            - state: ALL STATES + DC
+            - county: All counties in the selected states
+            - geo: tract - the smallest unit of geo you can select for this function.
+                Alternatively can be Place, County, or State.
+        - API Key read from .env file (you can also provide as a string)
+
+    Parameters
+    ----------
+    cols: list[str]
+        List of ACS columns to grab.
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
+    dataset: str
+        String representing the dataset you are downloading.
+        Defaults to "acs/acs5" - from censusdis = ACS_5
+    state: list[str] | str
+        List of two letter state FIPS codes that you want to download data for.
+        Defaults to censusdis constant ALL_STATES_AND_DC.
+    county: list[str] | str
+        List of county FIPS codes that you want to download data for. Must match
+        the states in the state list specified above.
+        Defaults to "*" (all)
+    vintage: int
+        Year of dataset. Defaults to 2024.
+    api_key: str
+        Census API Key. Defaults to pulling from the environment variable.
+
+    Returns
+    -------
+    tab : gpd.GeoDataFrame (with_geometry always set to TRUE)
+        Columns -
+            "GEOID",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
+            "year_struct_built_2020_later_percent",
+            "year_struct_built_2010_2019_percent",
+            "year_struct_built_2000_2009_percent",
+            "year_struct_built_1990_1999_percent",
+            "year_struct_built_1980_1989_percent"
+            "year_struct_built_1970_1979_percent"
+            "year_struct_built_1960_1969_percent",
+            "year_struct_built_1950_1959_percent",
+            "year_struct_built_1940_1949_percent",
+            "year_struct_built_pre_1940_percent",
+            "year_struct_built_total_struct",
+            "geometry",
+    """
     bcn = {
-        "B23025_001E": "TOTAL_POPULATION_16P",
+        "B23025_001E": "TOT_POP_16P",
         "B23025_003E": "EMPLOYMENT_CIVILIAN_LABOR_FORCE",
         "B23025_004E": "EMPLOYMENT_CIVILIAN_LABOR_FORCE_EMPLOYED",
         "B23025_005E": "EMPLOYMENT_CIVILIAN_LABOR_FORCE_UNEMPLOYED",
@@ -581,7 +1022,7 @@ def make_civ_emp_tables(
     ).rename(columns=bcn)
 
     cet["employment_civilian_labor_force_percent"] = round(
-        cet["EMPLOYMENT_CIVILIAN_LABOR_FORCE"] / cet["TOTAL_POPULATION_16P"],
+        cet["EMPLOYMENT_CIVILIAN_LABOR_FORCE"] / cet["TOT_POP_16P"],
         3,
     )
     cet["employment_civilian_labor_force_employed_percent"] = round(
@@ -595,29 +1036,89 @@ def make_civ_emp_tables(
         3,
     )
     cet["employment_not_in_labor_force_percent"] = round(
-        cet["NOT_IN_LABOR_FORCE"] / cet["TOTAL_POPULATION_16P"],
+        cet["NOT_IN_LABOR_FORCE"] / cet["TOT_POP_16P"],
         3,
     )
 
     return cet[
         [
             "GEOID",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
             "employment_civilian_labor_force_percent",
             "employment_civilian_labor_force_employed_percent",
             "employment_civilian_labor_force_unemployed_percent",
             "employment_not_in_labor_force_percent",
+            "geometry",
         ]
     ]
 
 
 def make_tenure_tables(
-    dataset=ACS5,
-    state=ALL_STATES_AND_DC,
-    county="*",
-    geo="tract",
-    vintage=2024,
-    api_key=c,
-):
+    dataset: str = ACS5,
+    state: list[str] | str = ALL_STATES_AND_DC,
+    county: list[str] | str = "*",
+    geo: str = "tract",
+    vintage: int = 2024,
+    api_key: str | None = get_api_key(),
+) -> gpd.GeoDataFrame | pd.DataFrame:
+    """
+    Create a predefined table for percentage households living in owner-occupied
+    and renter-occupied housing units.
+
+    This function calls the dwnld_acs5 function so all that
+    applies to that function also applies to this one (including defaults).
+
+    Defaults:
+        - Dataset: ACS 5YR Estimates
+        - Vintage: 2024
+        - Geography:
+            - state: ALL STATES + DC
+            - county: All counties in the selected states
+            - geo: tract - the smallest unit of geo you can select for this function.
+                Alternatively can be Place, County, or State.
+        - API Key read from .env file (you can also provide as a string)
+
+    Parameters
+    ----------
+    cols: list[str]
+        List of ACS columns to grab.
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
+    dataset: str
+        String representing the dataset you are downloading.
+        Defaults to "acs/acs5" - from censusdis = ACS_5
+    state: list[str] | str
+        List of two letter state FIPS codes that you want to download data for.
+        Defaults to censusdis constant ALL_STATES_AND_DC.
+    county: list[str] | str
+        List of county FIPS codes that you want to download data for. Must match
+        the states in the state list specified above.
+        Defaults to "*" (all)
+    vintage: int
+        Year of dataset. Defaults to 2024.
+    api_key: str
+        Census API Key. Defaults to pulling from the environment variable.
+
+    Returns
+    -------
+    tab : gpd.GeoDataFrame (with_geometry always set to TRUE)
+        Columns -
+            "GEOID",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
+            "tenure_owner_occupied_percent",
+            "tenure_renter_occupied_percent",
+            "tenure_total_hh",
+            "geometry",
+    """
     bcn = {
         "B25003_001E": "tenure_total_hh",
         "B25003_002E": "tenure_owner_occupied",
@@ -644,21 +1145,78 @@ def make_tenure_tables(
     return ten[
         [
             "GEOID",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
             "tenure_owner_occupied_percent",
             "tenure_renter_occupied_percent",
             "tenure_total_hh",
+            "geometry",
         ]
     ]
 
 
 def make_med_inc_tables(
-    dataset=ACS5,
-    state=ALL_STATES_AND_DC,
-    county="*",
-    geo="tract",
-    vintage=2024,
-    api_key=c,
-):
+    dataset: str = ACS5,
+    state: list[str] | str = ALL_STATES_AND_DC,
+    county: list[str] | str = "*",
+    geo: str = "tract",
+    vintage: int = 2024,
+    api_key: str | None = get_api_key(),
+) -> gpd.GeoDataFrame | pd.DataFrame:
+    """
+    Create a predefined table for median household income in vintage dollars.
+
+    This function calls the dwnld_acs5 function so all that
+    applies to that function also applies to this one (including defaults).
+
+    Defaults:
+        - Dataset: ACS 5YR Estimates
+        - Vintage: 2024
+        - Geography:
+            - state: ALL STATES + DC
+            - county: All counties in the selected states
+            - geo: tract - the smallest unit of geo you can select for this function.
+                Alternatively can be Place, County, or State.
+        - API Key read from .env file (you can also provide as a string)
+
+    Parameters
+    ----------
+    cols: list[str]
+        List of ACS columns to grab.
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
+    dataset: str
+        String representing the dataset you are downloading.
+        Defaults to "acs/acs5" - from censusdis = ACS_5
+    state: list[str] | str
+        List of two letter state FIPS codes that you want to download data for.
+        Defaults to censusdis constant ALL_STATES_AND_DC.
+    county: list[str] | str
+        List of county FIPS codes that you want to download data for. Must match
+        the states in the state list specified above.
+        Defaults to "*" (all)
+    vintage: int
+        Year of dataset. Defaults to 2024.
+    api_key: str
+        Census API Key. Defaults to pulling from the environment variable.
+
+    Returns
+    -------
+    tab : gpd.GeoDataFrame (with_geometry always set to TRUE)
+        Columns -
+            "GEOID",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
+            "median_household_income_{vintage}$"
+            "geometry",
+    """
     bcn = {
         "B19013_001E": f"median_household_income_{vintage}$",
     }
@@ -673,17 +1231,82 @@ def make_med_inc_tables(
         api_key=api_key,
     ).rename(columns=bcn)
 
-    return mit[["GEOID", f"median_household_income_{vintage}$"]]
+    return mit[
+        [
+            "GEOID",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
+            f"median_household_income_{vintage}$",
+            "geometry",
+        ]
+    ]
 
 
 def make_basics_tables(
-    dataset=ACS5,
-    state=ALL_STATES_AND_DC,
-    county="*",
-    geo="tract",
-    vintage=2024,
-    api_key=c,
-):
+    dataset: str = ACS5,
+    state: list[str] | str = ALL_STATES_AND_DC,
+    county: list[str] | str = "*",
+    geo: str = "tract",
+    vintage: int = 2024,
+    api_key: str | None = get_api_key(),
+) -> gpd.GeoDataFrame | pd.DataFrame:
+    """
+    Create a predefined table for basic universe counts:
+        total population, total housing units, total households.
+
+    This function calls the dwnld_acs5 function so all that
+    applies to that function also applies to this one (including defaults).
+
+    Defaults:
+        - Dataset: ACS 5YR Estimates
+        - Vintage: 2024
+        - Geography:
+            - state: ALL STATES + DC
+            - county: All counties in the selected states
+            - geo: tract - the smallest unit of geo you can select for this function.
+                Alternatively can be Place, County, or State.
+        - API Key read from .env file (you can also provide as a string)
+
+    Parameters
+    ----------
+    cols: list[str]
+        List of ACS columns to grab.
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
+    dataset: str
+        String representing the dataset you are downloading.
+        Defaults to "acs/acs5" - from censusdis = ACS_5
+    state: list[str] | str
+        List of two letter state FIPS codes that you want to download data for.
+        Defaults to censusdis constant ALL_STATES_AND_DC.
+    county: list[str] | str
+        List of county FIPS codes that you want to download data for. Must match
+        the states in the state list specified above.
+        Defaults to "*" (all)
+    vintage: int
+        Year of dataset. Defaults to 2024.
+    api_key: str
+        Census API Key. Defaults to pulling from the environment variable.
+
+    Returns
+    -------
+    tab : gpd.GeoDataFrame (with_geometry always set to TRUE)
+        Columns -
+            "GEOID",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
+            "total_population_universe",
+            "total_households_universe",
+            "total_housing_units_universe",
+            "geometry",
+    """
     bcn = {
         "B01003_001E": "total_population_universe",
         "B08201_001E": "total_households_universe",
@@ -703,21 +1326,81 @@ def make_basics_tables(
     return bt[
         [
             "GEOID",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
             "total_population_universe",
             "total_households_universe",
             "total_housing_units_universe",
+            "geometry",
         ]
     ]
 
 
 def make_occupancy_tables(
-    dataset=ACS5,
-    state=ALL_STATES_AND_DC,
-    county="*",
-    geo="tract",
-    vintage=2024,
-    api_key=c,
-):
+    dataset: str = ACS5,
+    state: list[str] | str = ALL_STATES_AND_DC,
+    county: list[str] | str = "*",
+    geo: str = "tract",
+    vintage: int = 2024,
+    api_key: str | None = get_api_key(),
+) -> gpd.GeoDataFrame | pd.DataFrame:
+    """
+    Create a predefined table for percentage of housing units that
+      are occupied or vacant.
+
+    This function calls the dwnld_acs5 function so all that
+    applies to that function also applies to this one (including defaults).
+
+    Defaults:
+        - Dataset: ACS 5YR Estimates
+        - Vintage: 2024
+        - Geography:
+            - state: ALL STATES + DC
+            - county: All counties in the selected states
+            - geo: tract - the smallest unit of geo you can select for this function.
+                Alternatively can be Place, County, or State.
+        - API Key read from .env file (you can also provide as a string)
+
+    Parameters
+    ----------
+    cols: list[str]
+        List of ACS columns to grab.
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
+    dataset: str
+        String representing the dataset you are downloading.
+        Defaults to "acs/acs5" - from censusdis = ACS_5
+    state: list[str] | str
+        List of two letter state FIPS codes that you want to download data for.
+        Defaults to censusdis constant ALL_STATES_AND_DC.
+    county: list[str] | str
+        List of county FIPS codes that you want to download data for. Must match
+        the states in the state list specified above.
+        Defaults to "*" (all)
+    vintage: int
+        Year of dataset. Defaults to 2024.
+    api_key: str
+        Census API Key. Defaults to pulling from the environment variable.
+
+    Returns
+    -------
+    tab : gpd.GeoDataFrame (with_geometry always set to TRUE)
+        Columns -
+            "GEOID",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
+            "total_housing_units_universe",
+            "occupied_housing_units_percent",
+            "vacant_housing_units_percent",
+            "geometry",
+    """
     bcn = {
         "B25002_001E": "total_housing_units_universe",
         "B25002_002E": "occupied_housing_units",
@@ -746,8 +1429,14 @@ def make_occupancy_tables(
     return ot[
         [
             "GEOID",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
             "total_housing_units_universe",
             "occupied_housing_units_percent",
             "vacant_housing_units_percent",
+            "geometry",
         ]
     ]
