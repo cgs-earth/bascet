@@ -751,7 +751,7 @@ def make_tenure_by_units_tables(
             "units_in_struct_occupied_housing_units",
             "units_in_struct_occupied_housing_units_1_detached",
             "units_in_struct_occupied_housing_units_1_attached",
-            "units_in_struct_occupied_housing_units_2"
+            "units_in_struct_occupied_housing_units_2",
             "units_in_struct_occupied_housing_units_3_4",
             "units_in_struct_occupied_housing_units_5_9",
             "units_in_struct_occupied_housing_units_10_19",
@@ -824,8 +824,8 @@ def make_year_built_tables(
             "year_struct_built_2010_2019_percent",
             "year_struct_built_2000_2009_percent",
             "year_struct_built_1990_1999_percent",
-            "year_struct_built_1980_1989_percent"
-            "year_struct_built_1970_1979_percent"
+            "year_struct_built_1980_1989_percent",
+            "year_struct_built_1970_1979_percent",
             "year_struct_built_1960_1969_percent",
             "year_struct_built_1950_1959_percent",
             "year_struct_built_1940_1949_percent",
@@ -911,8 +911,8 @@ def make_year_built_tables(
             "year_struct_built_2010_2019_percent",
             "year_struct_built_2000_2009_percent",
             "year_struct_built_1990_1999_percent",
-            "year_struct_built_1980_1989_percent"
-            "year_struct_built_1970_1979_percent"
+            "year_struct_built_1980_1989_percent",
+            "year_struct_built_1970_1979_percent",
             "year_struct_built_1960_1969_percent",
             "year_struct_built_1950_1959_percent",
             "year_struct_built_1940_1949_percent",
@@ -979,17 +979,10 @@ def make_civ_emp_tables(
             "PLACE",
             "TRACT",
             "NAME",
-            "year_struct_built_2020_later_percent",
-            "year_struct_built_2010_2019_percent",
-            "year_struct_built_2000_2009_percent",
-            "year_struct_built_1990_1999_percent",
-            "year_struct_built_1980_1989_percent"
-            "year_struct_built_1970_1979_percent"
-            "year_struct_built_1960_1969_percent",
-            "year_struct_built_1950_1959_percent",
-            "year_struct_built_1940_1949_percent",
-            "year_struct_built_pre_1940_percent",
-            "year_struct_built_total_struct",
+            "employment_civilian_labor_force_percent",
+            "employment_civilian_labor_force_employed_percent",
+            "employment_civilian_labor_force_unemployed_percent",
+            "employment_not_in_labor_force_percent",
             "geometry",
     """
     bcn = {
