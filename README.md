@@ -16,5 +16,4 @@ CGS GitHub Repository Best Practices Tracking:
 3. Target User: Novice (goal: pip install basket)
 
 Best Practices To Do:
-- Contributions readme
 - Code Coverage (e.g. testing)
