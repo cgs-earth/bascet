@@ -6,8 +6,6 @@ bascet = BASic CEnsus Tables.
 
 A way to easily grab some pre-formatted tables from the American Community Survey.
 
-Attending Metaphysician: Margo Atkinson (matkinson@lincolninst.edu)
-
 Examples with the Decennial Census and CPS forthcoming.
 
 ## Install
