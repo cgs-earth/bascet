@@ -3,8 +3,8 @@ import pandas as pd
 import pytest
 from shapely.geometry import Point
 
-import basket.access_acs as access_acs
-from basket.export_acs import acs2csv, acs2parquet, acs2spat, ten_char_names
+import bascet.access_acs as access_acs
+from bascet.export_acs import acs2csv, acs2parquet, acs2spat, ten_char_names
 
 
 @pytest.fixture

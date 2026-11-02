@@ -24,7 +24,7 @@ jobs:
     - name: Install the project
       run: uv sync --all-extras --dev  # --locked
     - name: Run tests
-      run: uv run pytest --rootdir=tests --cov=basket tests
+      run: uv run pytest --rootdir=tests --cov=bascet tests
 
     - name: failed tests 🚩
       if: ${{ failure() }}

@@ -4,7 +4,7 @@ import geopandas as gpd
 import pytest
 from shapely.geometry import Point
 
-import basket.access_acs as access_acs
+import bascet.access_acs as access_acs
 
 
 @pytest.fixture(autouse=True)

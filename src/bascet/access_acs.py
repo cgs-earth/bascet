@@ -195,11 +195,6 @@ def make_race_tables(
 
     Parameters
     ----------
-    cols: list[str]
-        List of ACS columns to grab.
-    geo: str
-        The base geographic category that you want your data in.
-        Defaults to "tract". Other options are ["county", "state", "place]
     dataset: str
         String representing the dataset you are downloading.
         Defaults to "acs/acs5" - from censusdis = ACS_5
@@ -210,6 +205,9 @@ def make_race_tables(
         List of county FIPS codes that you want to download data for. Must match
         the states in the state list specified above.
         Defaults to "*" (all)
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
     vintage: int
         Year of dataset. Defaults to 2024.
     api_key: str
@@ -344,11 +342,6 @@ def make_pov_limit_tables(
 
     Parameters
     ----------
-    cols: list[str]
-        List of ACS columns to grab.
-    geo: str
-        The base geographic category that you want your data in.
-        Defaults to "tract". Other options are ["county", "state", "place]
     dataset: str
         String representing the dataset you are downloading.
         Defaults to "acs/acs5" - from censusdis = ACS_5
@@ -359,6 +352,9 @@ def make_pov_limit_tables(
         List of county FIPS codes that you want to download data for. Must match
         the states in the state list specified above.
         Defaults to "*" (all)
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
     vintage: int
         Year of dataset. Defaults to 2024.
     api_key: str
@@ -452,11 +448,6 @@ def make_age_sex_tables(
 
     Parameters
     ----------
-    cols: list[str]
-        List of ACS columns to grab.
-    geo: str
-        The base geographic category that you want your data in.
-        Defaults to "tract". Other options are ["county", "state", "place]
     dataset: str
         String representing the dataset you are downloading.
         Defaults to "acs/acs5" - from censusdis = ACS_5
@@ -467,6 +458,9 @@ def make_age_sex_tables(
         List of county FIPS codes that you want to download data for. Must match
         the states in the state list specified above.
         Defaults to "*" (all)
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
     vintage: int
         Year of dataset. Defaults to 2024.
     api_key: str
@@ -612,11 +606,6 @@ def make_units_in_struct_tables(
 
     Parameters
     ----------
-    cols: list[str]
-        List of ACS columns to grab.
-    geo: str
-        The base geographic category that you want your data in.
-        Defaults to "tract". Other options are ["county", "state", "place]
     dataset: str
         String representing the dataset you are downloading.
         Defaults to "acs/acs5" - from censusdis = ACS_5
@@ -627,6 +616,9 @@ def make_units_in_struct_tables(
         List of county FIPS codes that you want to download data for. Must match
         the states in the state list specified above.
         Defaults to "*" (all)
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
     vintage: int
         Year of dataset. Defaults to 2024.
     api_key: str
@@ -643,16 +635,16 @@ def make_units_in_struct_tables(
             "TRACT",
             "NAME",
             "units_in_struct_occupied_housing_units",
-            "units_in_struct_occupied_housing_units_1_detached",
-            "units_in_struct_occupied_housing_units_1_attached",
-            "units_in_struct_occupied_housing_units_2"
-            "units_in_struct_occupied_housing_units_3_4",
-            "units_in_struct_occupied_housing_units_5_9",
-            "units_in_struct_occupied_housing_units_10_19",
-            "units_in_struct_occupied_housing_units_20_49",
-            "units_in_struct_occupied_housing_units_50_more",
-            "units_in_struct_occupied_housing_units_mobile_home",
-            "units_in_struct_occupied_housing_units_boat_rv_van_etc",
+            "units_in_struct_occupied_housing_units_1_detached_percent",
+            "units_in_struct_occupied_housing_units_1_attached_percent",
+            "units_in_struct_occupied_housing_units_2_percent",
+            "units_in_struct_occupied_housing_units_3_4_percent",
+            "units_in_struct_occupied_housing_units_5_9_percent",
+            "units_in_struct_occupied_housing_units_10_19_percent",
+            "units_in_struct_occupied_housing_units_20_49_percent",
+            "units_in_struct_occupied_housing_units_50_more_percent",
+            "units_in_struct_occupied_housing_units_mobile_home_percent",
+            "units_in_struct_occupied_housing_units_boat_rv_van_etc_percent",
             "geometry",
     """
     bcn = {
@@ -695,53 +687,81 @@ def make_units_in_struct_tables(
         3,
     )
 
-    tut["units_in_struct_occupied_housing_units_1_detached"] = round(
-        tut["TENURE_BY_U_IN_STRUCT_OO_HUS_1_DETACHED"]
-        + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_1_DETACHED"],
+    tut["units_in_struct_occupied_housing_units_1_detached_percent"] = round(
+        (
+            tut["TENURE_BY_U_IN_STRUCT_OO_HUS_1_DETACHED"]
+            + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_1_DETACHED"]
+        )
+        / tut["units_in_struct_occupied_housing_units"],
         3,
     )
-    tut["units_in_struct_occupied_housing_units_1_attached"] = round(
-        tut["TENURE_BY_U_IN_STRUCT_OO_HUS_1_ATTACHED"]
-        + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_1_ATTACHED"],
+    tut["units_in_struct_occupied_housing_units_1_attached_percent"] = round(
+        (
+            tut["TENURE_BY_U_IN_STRUCT_OO_HUS_1_ATTACHED"]
+            + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_1_ATTACHED"]
+        )
+        / tut["units_in_struct_occupied_housing_units"],
         3,
     )
-    tut["units_in_struct_occupied_housing_units_2"] = round(
-        tut["TENURE_BY_U_IN_STRUCT_OO_HUS_2"] + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_2"],
+    tut["units_in_struct_occupied_housing_units_2_percent"] = round(
+        (tut["TENURE_BY_U_IN_STRUCT_OO_HUS_2"] + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_2"])
+        / tut["units_in_struct_occupied_housing_units"],
         3,
     )
-    tut["units_in_struct_occupied_housing_units_3_4"] = round(
-        tut["TENURE_BY_U_IN_STRUCT_OO_HUS_3_4"]
-        + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_3_4"],
+    tut["units_in_struct_occupied_housing_units_3_4_percent"] = round(
+        (
+            tut["TENURE_BY_U_IN_STRUCT_OO_HUS_3_4"]
+            + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_3_4"]
+        )
+        / tut["units_in_struct_occupied_housing_units"],
         3,
     )
-    tut["units_in_struct_occupied_housing_units_5_9"] = round(
-        tut["TENURE_BY_U_IN_STRUCT_OO_HUS_5_9"]
-        + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_5_9"],
+    tut["units_in_struct_occupied_housing_units_5_9_percent"] = round(
+        (
+            tut["TENURE_BY_U_IN_STRUCT_OO_HUS_5_9"]
+            + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_5_9"]
+        )
+        / tut["units_in_struct_occupied_housing_units"],
         3,
     )
-    tut["units_in_struct_occupied_housing_units_10_19"] = round(
-        tut["TENURE_BY_U_IN_STRUCT_OO_HUS_10_19"]
-        + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_10_19"],
+    tut["units_in_struct_occupied_housing_units_10_19_percent"] = round(
+        (
+            tut["TENURE_BY_U_IN_STRUCT_OO_HUS_10_19"]
+            + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_10_19"]
+        )
+        / tut["units_in_struct_occupied_housing_units"],
         3,
     )
-    tut["units_in_struct_occupied_housing_units_20_49"] = round(
-        tut["TENURE_BY_U_IN_STRUCT_OO_HUS_20_49"]
-        + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_20_49"],
+    tut["units_in_struct_occupied_housing_units_20_49_percent"] = round(
+        (
+            tut["TENURE_BY_U_IN_STRUCT_OO_HUS_20_49"]
+            + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_20_49"]
+        )
+        / tut["units_in_struct_occupied_housing_units"],
         3,
     )
-    tut["units_in_struct_occupied_housing_units_50_more"] = round(
-        tut["TENURE_BY_U_IN_STRUCT_OO_HUS_50_MORE"]
-        + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_50_MORE"],
+    tut["units_in_struct_occupied_housing_units_50_more_percent"] = round(
+        (
+            tut["TENURE_BY_U_IN_STRUCT_OO_HUS_50_MORE"]
+            + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_50_MORE"]
+        )
+        / tut["units_in_struct_occupied_housing_units"],
         3,
     )
-    tut["units_in_struct_occupied_housing_units_mobile_home"] = round(
-        tut["TENURE_BY_U_IN_STRUCT_OO_HUS_MOBILEHOME"]
-        + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_MOBILEHOME"],
+    tut["units_in_struct_occupied_housing_units_mobile_home_percent"] = round(
+        (
+            tut["TENURE_BY_U_IN_STRUCT_OO_HUS_MOBILEHOME"]
+            + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_MOBILEHOME"]
+        )
+        / tut["units_in_struct_occupied_housing_units"],
         3,
     )
-    tut["units_in_struct_occupied_housing_units_boat_rv_van_etc"] = round(
-        tut["TENURE_BY_U_IN_STRUCT_OO_HUS_BOAT_RV_VAN_ETC"]
-        + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_BOAT_RV_VAN_ETC"],
+    tut["units_in_struct_occupied_housing_units_boat_rv_van_etc_percent"] = round(
+        (
+            tut["TENURE_BY_U_IN_STRUCT_OO_HUS_BOAT_RV_VAN_ETC"]
+            + tut["TENURE_BY_U_IN_STRUCT_RO_HUS_BOAT_RV_VAN_ETC"]
+        )
+        / tut["units_in_struct_occupied_housing_units"],
         3,
     )
     return tut[
@@ -753,16 +773,16 @@ def make_units_in_struct_tables(
             "TRACT",
             "NAME",
             "units_in_struct_occupied_housing_units",
-            "units_in_struct_occupied_housing_units_1_detached",
-            "units_in_struct_occupied_housing_units_1_attached",
-            "units_in_struct_occupied_housing_units_2",
-            "units_in_struct_occupied_housing_units_3_4",
-            "units_in_struct_occupied_housing_units_5_9",
-            "units_in_struct_occupied_housing_units_10_19",
-            "units_in_struct_occupied_housing_units_20_49",
-            "units_in_struct_occupied_housing_units_50_more",
-            "units_in_struct_occupied_housing_units_mobile_home",
-            "units_in_struct_occupied_housing_units_boat_rv_van_etc",
+            "units_in_struct_occupied_housing_units_1_detached_percent",
+            "units_in_struct_occupied_housing_units_1_attached_percent",
+            "units_in_struct_occupied_housing_units_2_percent",
+            "units_in_struct_occupied_housing_units_3_4_percent",
+            "units_in_struct_occupied_housing_units_5_9_percent",
+            "units_in_struct_occupied_housing_units_10_19_percent",
+            "units_in_struct_occupied_housing_units_20_49_percent",
+            "units_in_struct_occupied_housing_units_50_more_percent",
+            "units_in_struct_occupied_housing_units_mobile_home_percent",
+            "units_in_struct_occupied_housing_units_boat_rv_van_etc_percent",
             "geometry",
         ]
     ]
@@ -794,11 +814,6 @@ def make_year_built_tables(
 
     Parameters
     ----------
-    cols: list[str]
-        List of ACS columns to grab.
-    geo: str
-        The base geographic category that you want your data in.
-        Defaults to "tract". Other options are ["county", "state", "place]
     dataset: str
         String representing the dataset you are downloading.
         Defaults to "acs/acs5" - from censusdis = ACS_5
@@ -809,6 +824,9 @@ def make_year_built_tables(
         List of county FIPS codes that you want to download data for. Must match
         the states in the state list specified above.
         Defaults to "*" (all)
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
     vintage: int
         Year of dataset. Defaults to 2024.
     api_key: str
@@ -952,11 +970,6 @@ def make_civ_emp_tables(
 
     Parameters
     ----------
-    cols: list[str]
-        List of ACS columns to grab.
-    geo: str
-        The base geographic category that you want your data in.
-        Defaults to "tract". Other options are ["county", "state", "place]
     dataset: str
         String representing the dataset you are downloading.
         Defaults to "acs/acs5" - from censusdis = ACS_5
@@ -967,6 +980,9 @@ def make_civ_emp_tables(
         List of county FIPS codes that you want to download data for. Must match
         the states in the state list specified above.
         Defaults to "*" (all)
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
     vintage: int
         Year of dataset. Defaults to 2024.
     api_key: str
@@ -1069,11 +1085,6 @@ def make_tenure_tables(
 
     Parameters
     ----------
-    cols: list[str]
-        List of ACS columns to grab.
-    geo: str
-        The base geographic category that you want your data in.
-        Defaults to "tract". Other options are ["county", "state", "place]
     dataset: str
         String representing the dataset you are downloading.
         Defaults to "acs/acs5" - from censusdis = ACS_5
@@ -1084,6 +1095,9 @@ def make_tenure_tables(
         List of county FIPS codes that you want to download data for. Must match
         the states in the state list specified above.
         Defaults to "*" (all)
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
     vintage: int
         Year of dataset. Defaults to 2024.
     api_key: str
@@ -1169,11 +1183,6 @@ def make_med_inc_tables(
 
     Parameters
     ----------
-    cols: list[str]
-        List of ACS columns to grab.
-    geo: str
-        The base geographic category that you want your data in.
-        Defaults to "tract". Other options are ["county", "state", "place]
     dataset: str
         String representing the dataset you are downloading.
         Defaults to "acs/acs5" - from censusdis = ACS_5
@@ -1184,6 +1193,9 @@ def make_med_inc_tables(
         List of county FIPS codes that you want to download data for. Must match
         the states in the state list specified above.
         Defaults to "*" (all)
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
     vintage: int
         Year of dataset. Defaults to 2024.
     api_key: str
@@ -1257,11 +1269,6 @@ def make_basics_tables(
 
     Parameters
     ----------
-    cols: list[str]
-        List of ACS columns to grab.
-    geo: str
-        The base geographic category that you want your data in.
-        Defaults to "tract". Other options are ["county", "state", "place]
     dataset: str
         String representing the dataset you are downloading.
         Defaults to "acs/acs5" - from censusdis = ACS_5
@@ -1272,6 +1279,9 @@ def make_basics_tables(
         List of county FIPS codes that you want to download data for. Must match
         the states in the state list specified above.
         Defaults to "*" (all)
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
     vintage: int
         Year of dataset. Defaults to 2024.
     api_key: str
@@ -1351,11 +1361,6 @@ def make_occupancy_tables(
 
     Parameters
     ----------
-    cols: list[str]
-        List of ACS columns to grab.
-    geo: str
-        The base geographic category that you want your data in.
-        Defaults to "tract". Other options are ["county", "state", "place]
     dataset: str
         String representing the dataset you are downloading.
         Defaults to "acs/acs5" - from censusdis = ACS_5
@@ -1366,6 +1371,9 @@ def make_occupancy_tables(
         List of county FIPS codes that you want to download data for. Must match
         the states in the state list specified above.
         Defaults to "*" (all)
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
     vintage: int
         Year of dataset. Defaults to 2024.
     api_key: str

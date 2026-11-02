@@ -2,7 +2,7 @@
 We welcome contributions but please understand that the lead developer is new and will be slow to respond but will get back to everyone!
 
 # Introduction
-Thank you for considering contributing to basket! No one brain can do it all - and many monkeys at typewriters theoretically can write Shakespeare.
+Thank you for considering contributing to bascet! No one brain can do it all - and many monkeys at typewriters theoretically can write Shakespeare.
 
 # Why should I care about contribution guidelines?
 If you are wondering why you should care about contribution guidelines because you are a cowboy misfit in a Shakespearean world - then tough cookies, lone wolf! If instead, you are looking for some information about how to contribute to this repository in a way that will help this repository grow, improve, and move past the Elizabethan Era (perhaps to steampunk?) - this is the place to be!
@@ -10,7 +10,7 @@ If you are wondering why you should care about contribution guidelines because y
 Here are some guidelines to make your contribution successful and easy to incorporate.
 
 ## What we are looking for in a contribution?
-There are many ways to contribute - you don't even have to be an experienced Pythonista to do so. We welcome tutorials and examples of repository functionality, improving documentation, submitting bug reports and feature requests, and writing code to be incorporated into basket either as an additional module or extension/bug fix for a current tool.
+There are many ways to contribute - you don't even have to be an experienced Pythonista to do so. We welcome tutorials and examples of repository functionality, improving documentation, submitting bug reports and feature requests, and writing code to be incorporated into bascet either as an additional module or extension/bug fix for a current tool.
 
 If you have a table request - please either create an issue OR ideally write the code and submit a PR.
 
@@ -39,9 +39,9 @@ For any contributions:
 
 
 # Reporting Bugs
-When reporting an issue, please list the version of basket you are using and any relevant information about your application (python version, operating system, etc). Please describe as specifically as you can what behavior you are seeing (eg: an error message? a null return value?). Please use the template and fill it out as much as possible!
+When reporting an issue, please list the version of bascet you are using and any relevant information about your application (python version, operating system, etc). Please describe as specifically as you can what behavior you are seeing (eg: an error message? a null return value?). Please use the template and fill it out as much as possible!
 
-Please do not use GitHub issues to ask questions about how to use basket. Please email an repository admin (matkinson@lincolninst.edu) and we will endeavor to guide you as best we can.
+Please do not use GitHub issues to ask questions about how to use bascet. Please email an repository admin (matkinson@lincolninst.edu) and we will endeavor to guide you as best we can.
 
 # Submitting Features
 Please follow these guidelines:

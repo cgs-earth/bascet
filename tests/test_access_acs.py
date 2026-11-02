@@ -4,8 +4,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-import basket.access_acs as access_acs
-from basket.access_acs import (
+import bascet.access_acs as access_acs
+from bascet.access_acs import (
     dwnld_acs5,
     get_api_key,
     make_age_sex_tables,
@@ -226,16 +226,16 @@ TABLES = [
         "B25032",
         [
             "units_in_struct_occupied_housing_units",
-            "units_in_struct_occupied_housing_units_1_detached",
-            "units_in_struct_occupied_housing_units_1_attached",
-            "units_in_struct_occupied_housing_units_2",
-            "units_in_struct_occupied_housing_units_3_4",
-            "units_in_struct_occupied_housing_units_5_9",
-            "units_in_struct_occupied_housing_units_10_19",
-            "units_in_struct_occupied_housing_units_20_49",
-            "units_in_struct_occupied_housing_units_50_more",
-            "units_in_struct_occupied_housing_units_mobile_home",
-            "units_in_struct_occupied_housing_units_boat_rv_van_etc",
+            "units_in_struct_occupied_housing_units_1_detached_percent",
+            "units_in_struct_occupied_housing_units_1_attached_percent",
+            "units_in_struct_occupied_housing_units_2_percent",
+            "units_in_struct_occupied_housing_units_3_4_percent",
+            "units_in_struct_occupied_housing_units_5_9_percent",
+            "units_in_struct_occupied_housing_units_10_19_percent",
+            "units_in_struct_occupied_housing_units_20_49_percent",
+            "units_in_struct_occupied_housing_units_50_more_percent",
+            "units_in_struct_occupied_housing_units_mobile_home_percent",
+            "units_in_struct_occupied_housing_units_boat_rv_van_etc_percent",
         ],
     ),
     (
@@ -408,20 +408,32 @@ def test_age_sex_percentages(fake_download):
     assert row["age_over_64_percent"] == 0.12  # 12 buckets
 
 
-def test_units_in_struct_sums_owner_and_renter(fake_download):
+def test_units_in_struct_percent_of_all_occupied_units(fake_download):
     # Owner-occupied columns are B25032_002E..012E, renter are 013E..023E.
-    for i in range(2, 13):
-        fake_download.values[f"B25032_{i:03d}E"] = [i, 0]
-    for i in range(13, 24):
-        fake_download.values[f"B25032_{i:03d}E"] = [100, 1]
+    for i in range(2, 24):
+        fake_download.values[f"B25032_{i:03d}E"] = [0, 0]
+    fake_download.values.update(
+        {
+            "B25032_002E": [60, 2],  # owner total
+            "B25032_013E": [40, 1],  # renter total
+            "B25032_003E": [30, 1],  # owner 1 detached
+            "B25032_014E": [10, 0],  # renter 1 detached
+            "B25032_023E": [5, 0],  # renter boat/rv/van
+        }
+    )
 
     tab = make_units_in_struct_tables(api_key="k")
 
     row = tab.iloc[0]
-    assert row["units_in_struct_occupied_housing_units"] == 102
-    assert row["units_in_struct_occupied_housing_units_1_detached"] == 103
-    assert row["units_in_struct_occupied_housing_units_boat_rv_van_etc"] == 112
-    assert tab.iloc[1]["units_in_struct_occupied_housing_units"] == 1
+    assert row["units_in_struct_occupied_housing_units"] == 100
+    assert row["units_in_struct_occupied_housing_units_1_detached_percent"] == 0.4
+    assert row["units_in_struct_occupied_housing_units_boat_rv_van_etc_percent"] == 0.05
+    assert row["units_in_struct_occupied_housing_units_2_percent"] == 0
+    assert tab.iloc[1]["units_in_struct_occupied_housing_units"] == 3
+    assert (
+        tab.iloc[1]["units_in_struct_occupied_housing_units_1_detached_percent"]
+        == 0.333
+    )
 
 
 def test_year_built_percentages(fake_download):
