@@ -51,11 +51,13 @@ Other ways to provide the key:
 ## Examples
 Simple:
 ```python
-from bascet import make_age_sex_tables, acs2parquet
-from censusdis.states import STATE_RI  # state FIPS code
+from bascet import make_basics_tables, acs2csv, acs2spat
+from censusdis.states import STATE_RI
 
-age_sex = make_age_sex_tables(state=STATE_RI, geo="tract")
-acs2parquet(age_sex, "age_sex.parquet")
+basics = make_basics_tables(state=STATE_RI)
+acs2csv(basics, "ri_basics.csv")
+acs2spat(basics, "ri_basics.gpkg")
+acs2spat(basics, "ri_basics.shp")  # short column names
 ```
 
 Combination / Advanced:
@@ -73,15 +75,7 @@ extension, the default one is added. The folder you save into must already exist
 | `acs2spat(tab, out_path, vint=2024)` | `.gpkg` (default) or `.shp` | Needs a GeoDataFrame. For `.shp`, columns are renamed to 10 characters (shapefile limit) using `ten_char_names()`. Set `vint` to your data's year so the median income column is renamed correctly. |
 | `ten_char_names(vintage=2024)` | `dict` | The full-name → 10-character column mapping used for shapefiles. |
 
-```python
-from bascet import make_basics_tables, acs2csv, acs2spat
-from censusdis.states import STATE_RI
 
-basics = make_basics_tables(state=STATE_RI)
-acs2csv(basics, "ri_basics.csv")
-acs2spat(basics, "ri_basics.gpkg")
-acs2spat(basics, "ri_basics.shp")  # short column names
-```
 
 ## Tables
 Every function below returns a `geopandas.GeoDataFrame` (one row per geography, with
