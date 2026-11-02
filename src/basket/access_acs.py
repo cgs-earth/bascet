@@ -4,7 +4,7 @@ from censusdis.states import ALL_STATES_AND_DC
 import pandas as pd
 import geopandas as gpd
 import os
-from dotenv import load_dotenv, set_key
+from dotenv import find_dotenv, load_dotenv, set_key
 from pathlib import Path
 import numpy as np
 
@@ -12,7 +12,8 @@ import numpy as np
 def save_api_key(key_str: str) -> Path:
     """
     Create a saved environment variable for a Census API Key by creating or updating
-    a .env file in the same folder as this file.
+    a .env file in the current working directory. The key is also set for the
+    current session, so it can be used right away.
 
     To do manually- see .env.example: replace the string and resave as .env
 
@@ -32,12 +33,14 @@ def save_api_key(key_str: str) -> Path:
     """
     env_loc = Path("./.env")
     set_key(env_loc, key_to_set="CENSUS_API_KEY", value_to_set=key_str)
+    os.environ["CENSUS_API_KEY"] = key_str
     return env_loc
 
 
 def get_api_key() -> str | None:
     """
-    Return the Census API Key stored in a .env file in the same folder as this file.
+    Return the Census API Key from the CENSUS_API_KEY environment variable,
+    or from a .env file in the current working directory (or one of its parents).
 
     Parameters
     ----------
@@ -47,7 +50,7 @@ def get_api_key() -> str | None:
     -------
         : str | None - API Key
     """
-    load_dotenv()
+    load_dotenv(find_dotenv(usecwd=True))
     return os.getenv("CENSUS_API_KEY")
 
 
@@ -58,7 +61,7 @@ def dwnld_acs5(
     state: list[str] | str = ALL_STATES_AND_DC,
     county: list[str] | str = "*",
     vintage: int = 2024,
-    api_key: str | None = get_api_key(),
+    api_key: str | None = None,
 ) -> gpd.GeoDataFrame | pd.DataFrame:
     """
     Download data from the American Community Survey 5-Year Estimates
@@ -171,7 +174,7 @@ def make_race_tables(
     county: list[str] | str = "*",
     geo: str = "tract",
     vintage: int = 2024,
-    api_key: str | None = get_api_key(),
+    api_key: str | None = None,
 ) -> gpd.GeoDataFrame | pd.DataFrame:
     """
     Create a predefined table for percentage of population
@@ -320,7 +323,7 @@ def make_pov_limit_tables(
     county: list[str] | str = "*",
     geo: str = "tract",
     vintage: int = 2024,
-    api_key: str | None = get_api_key(),
+    api_key: str | None = None,
 ) -> gpd.GeoDataFrame | pd.DataFrame:
     """
     Create a predefined table for percentage of population
@@ -427,7 +430,7 @@ def make_age_sex_tables(
     county: list[str] | str = "*",
     geo: str = "tract",
     vintage: int = 2024,
-    api_key: str | None = get_api_key(),
+    api_key: str | None = None,
 ) -> gpd.GeoDataFrame | pd.DataFrame:
     """
     Create a predefined table for percentage of population
@@ -588,7 +591,7 @@ def make_units_in_struct_tables(
     county: list[str] | str = "*",
     geo: str = "tract",
     vintage: int = 2024,
-    api_key: str | None = get_api_key(),
+    api_key: str | None = None,
 ) -> gpd.GeoDataFrame | pd.DataFrame:
     """
     Create a predefined table for percentage of occupied housing units
@@ -771,7 +774,7 @@ def make_year_built_tables(
     county: list[str] | str = "*",
     geo: str = "tract",
     vintage: int = 2024,
-    api_key: str | None = get_api_key(),
+    api_key: str | None = None,
 ) -> gpd.GeoDataFrame | pd.DataFrame:
     """
     Create a predefined table for percentage of buildings by year built.
@@ -929,7 +932,7 @@ def make_civ_emp_tables(
     county: list[str] | str = "*",
     geo: str = "tract",
     vintage: int = 2024,
-    api_key: str | None = get_api_key(),
+    api_key: str | None = None,
 ) -> gpd.GeoDataFrame | pd.DataFrame:
     """
     Create a predefined table for percentage of buildings by year built.
@@ -1045,7 +1048,7 @@ def make_tenure_tables(
     county: list[str] | str = "*",
     geo: str = "tract",
     vintage: int = 2024,
-    api_key: str | None = get_api_key(),
+    api_key: str | None = None,
 ) -> gpd.GeoDataFrame | pd.DataFrame:
     """
     Create a predefined table for percentage households living in owner-occupied
@@ -1146,7 +1149,7 @@ def make_med_inc_tables(
     county: list[str] | str = "*",
     geo: str = "tract",
     vintage: int = 2024,
-    api_key: str | None = get_api_key(),
+    api_key: str | None = None,
 ) -> gpd.GeoDataFrame | pd.DataFrame:
     """
     Create a predefined table for median household income in vintage dollars.
@@ -1233,7 +1236,7 @@ def make_basics_tables(
     county: list[str] | str = "*",
     geo: str = "tract",
     vintage: int = 2024,
-    api_key: str | None = get_api_key(),
+    api_key: str | None = None,
 ) -> gpd.GeoDataFrame | pd.DataFrame:
     """
     Create a predefined table for basic universe counts:
@@ -1327,7 +1330,7 @@ def make_occupancy_tables(
     county: list[str] | str = "*",
     geo: str = "tract",
     vintage: int = 2024,
-    api_key: str | None = get_api_key(),
+    api_key: str | None = None,
 ) -> gpd.GeoDataFrame | pd.DataFrame:
     """
     Create a predefined table for percentage of housing units that

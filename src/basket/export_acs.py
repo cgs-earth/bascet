@@ -76,12 +76,14 @@ def acs2csv(tab: pd.DataFrame | gpd.GeoDataFrame, out_path: str):
     -------
     None
     """
+    if "geometry" in tab.columns:
+        tab = tab.drop(columns=["geometry"])
     op = Path(out_path)
     if op.suffix == "":
         out_path += ".csv"
         op = Path(out_path)
     if op.suffix == ".csv":
-        tab.drop(columns=["geometry"]).to_csv(op)
+        tab.to_csv(op)
     else:
         raise ValueError("File Path must end in '.csv'.")
 
@@ -138,8 +140,8 @@ def ten_char_names(vintage: int = 2024) -> dict[str, str]:
         "units_in_struct_occupied_housing_units_mobile_home": "hu_mh_perc",
         "units_in_struct_occupied_housing_units_boat_rv_van_etc": "hu_etc_per",
         "sex_female_percent": "sex_f_perc",
-        "age_under_5_years_percent": "u5_perc",
-        "age_under_18_years_percent": "u18_perc",
+        "age_under_5_percent": "u5_perc",
+        "age_under_18_percent": "u18_perc",
         "age_over_64_percent": "p64_perc",
         "federal_poverty_limit_below_percent": "pl_100u",
         "federal_poverty_limit_between_100_149_percent": "pl_100_149",
