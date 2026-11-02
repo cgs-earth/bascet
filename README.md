@@ -64,7 +64,8 @@ or create your own tables with: dwnld_acs5()
 
 ## Tables
 #### dwnld_acs5()
-```def dwnld_acs5(
+```
+def dwnld_acs5(
     cols: list[str],
     geo: str = "tract",
     dataset: str = ACS5,
@@ -116,7 +117,8 @@ or create your own tables with: dwnld_acs5()
     Returns
     -------
     tab : gpd.GeoDataFrame (with_geometry always set to TRUE)
-    """```
+    """
+```
 
 #### make_race_tables()
 ```
@@ -186,7 +188,7 @@ def make_race_tables(
             "race_personofcolor_percent",
             "geometry",
     """
-    ```
+```
 
 #### make_pov_limit_tables()
 ```
