@@ -1,0 +1,78 @@
+name: Publish
+
+# Publishing a GitHub release (tag vX.Y.Z) uploads to PyPI.
+# Running this workflow by hand (Actions tab -> Publish -> Run workflow)
+# uploads to TestPyPI only, for a trial run.
+#
+# Uses PyPI trusted publishing - no API tokens. Each index needs a
+# (pending) publisher for owner cgs-earth, repo bascet, workflow publish.yml,
+# and environment "pypi" (PyPI) or "testpypi" (TestPyPI).
+
+on:
+  release:
+    types: [ published ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - uses: actions/checkout@v6
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7.1.6
+      with:
+        version: "0.12.10"
+    - name: Check tag matches version
+      if: github.event_name == 'release'
+      run: |
+        version="$(uv version --short)"
+        if [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+          echo "Release tag ${GITHUB_REF_NAME} does not match pyproject version v${version}."
+          exit 1
+        fi
+    - name: Build sdist and wheel
+      run: uv build
+    - uses: actions/upload-artifact@v4
+      with:
+        name: dist
+        path: dist/
+
+  publish-testpypi:
+    if: github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/bascet
+    permissions:
+      id-token: write  # required for trusted publishing
+
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: dist
+        path: dist/
+    - name: Publish to TestPyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        repository-url: https://test.pypi.org/legacy/
+        skip-existing: true  # allow re-running the trial without a version bump
+
+  publish-pypi:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: pypi
+      url: https://pypi.org/p/bascet
+    permissions:
+      id-token: write  # required for trusted publishing
+
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: dist
+        path: dist/
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
