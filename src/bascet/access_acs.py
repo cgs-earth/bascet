@@ -953,7 +953,9 @@ def make_civ_emp_tables(
     api_key: str | None = None,
 ) -> gpd.GeoDataFrame | pd.DataFrame:
     """
-    Create a predefined table for percentage of buildings by year built.
+    Create a predefined table for percentage of population 16 and over
+        in or out of the civilian labor force, and percentage of the civilian
+        labor force that is employed or unemployed.
 
     This function calls the dwnld_acs5 function so all that
     applies to that function also applies to this one (including defaults).
