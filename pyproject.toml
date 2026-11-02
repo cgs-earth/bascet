@@ -44,4 +44,6 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/cgs-earth/bascet"
+Documentation = "https://github.com/cgs-earth/bascet#readme"
 Issues = "https://github.com/cgs-earth/bascet/issues"
+Changelog = "https://github.com/cgs-earth/bascet/blob/main/CHANGELOG.md"
