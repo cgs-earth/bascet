@@ -720,6 +720,7 @@ def make_units_in_struct_tables(
         / tut["units_in_struct_housing_units"],
         3,
     )
+
     return tut[
         [
             "GEOID",
