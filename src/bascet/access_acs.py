@@ -588,6 +588,171 @@ def make_units_in_struct_tables(
     api_key: str | None = None,
 ) -> gpd.GeoDataFrame | pd.DataFrame:
     """
+    Create a predefined table for percentage of housing units
+    by number of units.
+
+    This function calls the dwnld_acs5 function so all that
+    applies to that function also applies to this one (including defaults).
+
+    Defaults:
+        - Dataset: ACS 5YR Estimates
+        - Vintage: 2024
+        - Geography:
+            - state: ALL STATES + DC
+            - county: All counties in the selected states
+            - geo: tract - the smallest unit of geo you can select for this function.
+                Alternatively can be Place, County, or State.
+        - API Key read from .env file (you can also provide as a string)
+
+    Parameters
+    ----------
+    dataset: str
+        String representing the dataset you are downloading.
+        Defaults to "acs/acs5" - from censusdis = ACS_5
+    state: list[str] | str
+        List of two letter state FIPS codes that you want to download data for.
+        Defaults to censusdis constant ALL_STATES_AND_DC.
+    county: list[str] | str
+        List of county FIPS codes that you want to download data for. Must match
+        the states in the state list specified above.
+        Defaults to "*" (all)
+    geo: str
+        The base geographic category that you want your data in.
+        Defaults to "tract". Other options are ["county", "state", "place]
+    vintage: int
+        Year of dataset. Defaults to 2024.
+    api_key: str
+        Census API Key. Defaults to pulling from the environment variable.
+
+    Returns
+    -------
+    tab : gpd.GeoDataFrame (with_geometry always set to TRUE)
+        Columns -
+            "GEOID",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
+            "units_in_struct_housing_units",
+            "units_in_struct_housing_units_1_detached_percent",
+            "units_in_struct_housing_units_1_attached_percent",
+            "units_in_struct_housing_units_2_percent",
+            "units_in_struct_housing_units_3_4_percent",
+            "units_in_struct_housing_units_5_9_percent",
+            "units_in_struct_housing_units_10_19_percent",
+            "units_in_struct_housing_units_20_49_percent",
+            "units_in_struct_housing_units_50_more_percent",
+            "units_in_struct_housing_units_mobile_home_percent",
+            "units_in_struct_housing_units_boat_rv_van_etc_percent",
+            "geometry",
+    """
+    bcn = {
+        "B25024_001E": "TENURE_BY_U_IN_STRUCT_HUS",
+        "B25024_002E": "TENURE_BY_U_IN_STRUCT_HUS_1_DETACHED",
+        "B25024_003E": "TENURE_BY_U_IN_STRUCT_HUS_1_ATTACHED",
+        "B25024_004E": "TENURE_BY_U_IN_STRUCT_HUS_2",
+        "B25024_005E": "TENURE_BY_U_IN_STRUCT_HUS_3_4",
+        "B25024_006E": "TENURE_BY_U_IN_STRUCT_HUS_5_9",
+        "B25024_007E": "TENURE_BY_U_IN_STRUCT_HUS_10_19",
+        "B25024_008E": "TENURE_BY_U_IN_STRUCT_HUS_20_49",
+        "B25024_009E": "TENURE_BY_U_IN_STRUCT_HUS_50_MORE",
+        "B25024_010E": "TENURE_BY_U_IN_STRUCT_HUS_MOBILEHOME",
+        "B25024_011E": "TENURE_BY_U_IN_STRUCT_HUS_BOAT_RV_VAN_ETC",
+    }
+    cols = ["NAME"] + list(bcn.keys())
+    tut = dwnld_acs5(
+        cols,
+        dataset=dataset,
+        state=state,
+        county=county,
+        geo=geo,
+        vintage=vintage,
+        api_key=api_key,
+    ).rename(columns=bcn)
+
+    tut["units_in_struct_housing_units"] = round(
+        tut["TENURE_BY_U_IN_STRUCT_HUS"],
+        3,
+    )
+
+    tut["units_in_struct_housing_units_1_detached_percent"] = round(
+        tut["TENURE_BY_U_IN_STRUCT_HUS_1_DETACHED"]
+        / tut["units_in_struct_housing_units"],
+        3,
+    )
+    tut["units_in_struct_housing_units_1_attached_percent"] = round(
+        tut["TENURE_BY_U_IN_STRUCT_HUS_1_ATTACHED"]
+        / tut["units_in_struct_housing_units"],
+        3,
+    )
+    tut["units_in_struct_housing_units_2_percent"] = round(
+        tut["TENURE_BY_U_IN_STRUCT_HUS_2"] / tut["units_in_struct_housing_units"],
+        3,
+    )
+    tut["units_in_struct_housing_units_3_4_percent"] = round(
+        tut["TENURE_BY_U_IN_STRUCT_HUS_3_4"] / tut["units_in_struct_housing_units"],
+        3,
+    )
+    tut["units_in_struct_housing_units_5_9_percent"] = round(
+        tut["TENURE_BY_U_IN_STRUCT_HUS_5_9"] / tut["units_in_struct_housing_units"],
+        3,
+    )
+    tut["units_in_struct_housing_units_10_19_percent"] = round(
+        tut["TENURE_BY_U_IN_STRUCT_HUS_10_19"] / tut["units_in_struct_housing_units"],
+        3,
+    )
+    tut["units_in_struct_housing_units_20_49_percent"] = round(
+        tut["TENURE_BY_U_IN_STRUCT_HUS_20_49"] / tut["units_in_struct_housing_units"],
+        3,
+    )
+    tut["units_in_struct_housing_units_50_more_percent"] = round(
+        tut["TENURE_BY_U_IN_STRUCT_HUS_50_MORE"] / tut["units_in_struct_housing_units"],
+        3,
+    )
+    tut["units_in_struct_housing_units_mobile_home_percent"] = round(
+        tut["TENURE_BY_U_IN_STRUCT_HUS_MOBILEHOME"]
+        / tut["units_in_struct_housing_units"],
+        3,
+    )
+    tut["units_in_struct_housing_units_boat_rv_van_etc_percent"] = round(
+        tut["TENURE_BY_U_IN_STRUCT_HUS_BOAT_RV_VAN_ETC"]
+        / tut["units_in_struct_housing_units"],
+        3,
+    )
+    return tut[
+        [
+            "GEOID",
+            "STATE",
+            "COUNTY",
+            "PLACE",
+            "TRACT",
+            "NAME",
+            "units_in_struct_housing_units",
+            "units_in_struct_housing_units_1_detached_percent",
+            "units_in_struct_housing_units_1_attached_percent",
+            "units_in_struct_housing_units_2_percent",
+            "units_in_struct_housing_units_3_4_percent",
+            "units_in_struct_housing_units_5_9_percent",
+            "units_in_struct_housing_units_10_19_percent",
+            "units_in_struct_housing_units_20_49_percent",
+            "units_in_struct_housing_units_50_more_percent",
+            "units_in_struct_housing_units_mobile_home_percent",
+            "units_in_struct_housing_units_boat_rv_van_etc_percent",
+            "geometry",
+        ]
+    ]
+
+
+def make_occ_units_in_struct_tables(
+    dataset: str = ACS5,
+    state: list[str] | str = ALL_STATES_AND_DC,
+    county: list[str] | str = "*",
+    geo: str = "tract",
+    vintage: int = 2024,
+    api_key: str | None = None,
+) -> gpd.GeoDataFrame | pd.DataFrame:
+    """
     Create a predefined table for percentage of occupied housing units
     by number of units.
 
